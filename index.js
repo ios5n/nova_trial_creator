@@ -1,63 +1,72 @@
 const express = require('express');
-const cors = require('cors'); // تمكين CORS
+const cors = require('cors');
 const puppeteer = require('puppeteer');
 
 const app = express();
-app.use(cors()); // تمكين CORS
+app.use(cors());
 app.use(express.json());
 
 app.post('/create-trial', async (req, res) => {
   const { username, password } = req.body;
 
-  // إطلاق المتصفح مع الخيارات المناسبة
   const browser = await puppeteer.launch({
-    headless: true, // تشغيل المتصفح بدون واجهة رسومية
-    args: ['--no-sandbox', '--disable-setuid-sandbox'] // إضافات لتشغيله في بيئات الخوادم
+    headless: true,
+    args: ['--no-sandbox']
   });
-
   const page = await browser.newPage();
 
   try {
-    // الانتقال إلى صفحة تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
 
-    // تعبئة بيانات تسجيل الدخول
     await page.type('input[name="username"]', 'hammadi2024');
     await page.type('input[name="password"]', 'mtwajdan700');
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    // الانتقال إلى صفحة إضافة الاشتراك
     await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
 
-    // تعبئة بيانات المستخدم
-    await page.type('input[name="username"]', username);
-    await page.type('input[name="password"]', password);
-    await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await page.type('input[formcontrolname="username"]', username);
+    await page.type('input[formcontrolname="password"]', password);
+    await page.type('input[formcontrolname="mobileNumber"]', '+966500000000');
+    await page.type('textarea[formcontrolname="resellerNotes"]', 'تم الإنشاء تلقائيًا');
 
-    // تحديد الخيارات المطلوبة
-    // اختيار تجربة 12 ساعة مجانية
-    await page.waitForSelector('input[name="trial_time"]'); // التأكد من ظهور الحقل
-    await page.click('input[name="trial_time"]'); // تحديد 12 ساعة تجربة مجانية
+    // الضغط على زر Next
+    await page.evaluate(() => {
+      const nextBtn = [...document.querySelectorAll('button span')].find(el => el.textContent.includes("Next"));
+      if (nextBtn) nextBtn.click();
+    });
+    await page.waitForTimeout(1000);
 
-    // اختيار "All Countries"
-    await page.waitForSelector('input[name="all_countries"]'); // التأكد من ظهور الحقل
-    await page.click('input[name="all_countries"]'); // تحديد All Countries
+    // اختيار باقة "12 ساعة تجربة مجانية"
+    await page.click('mat-select[formcontrolname="package"]');
+    await page.waitForSelector('mat-option');
+    await page.evaluate(() => {
+      [...document.querySelectorAll('mat-option')].find(el => el.textContent.includes("12 ساعة")).click();
+    });
 
-    // اختيار تحويل المحتوى كامل
-    await page.waitForSelector('input[name="convert_all"]'); // التأكد من ظهور الحقل
-    await page.click('input[name="convert_all"]'); // تحويل المحتوى كامل
+    // اختيار All Countries
+    await page.click('mat-select[formcontrolname="country"]');
+    await page.waitForSelector('mat-option');
+    await page.evaluate(() => {
+      [...document.querySelectorAll('mat-option')].find(el => el.textContent.includes("All Countries")).click();
+    });
 
-    // الضغط على زر الحفظ
-    await page.waitForSelector('button#save'); // الانتظار حتى يظهر زر الحفظ
-    await page.click('button#save'); // الضغط على زر الحفظ
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    // اختيار قالب "تحويل المحتوى كامل"
+    await page.click('mat-select[formcontrolname="bouquetTemplate"]');
+    await page.waitForSelector('mat-option');
+    await page.evaluate(() => {
+      [...document.querySelectorAll('mat-option')].find(el => el.textContent.includes("تحويل المحتوى كامل")).click();
+    });
 
-    const url = await page.url(); // جلب الرابط بعد إتمام الاشتراك
-    await browser.close(); // إغلاق المتصفح
+    // الضغط على زر Save
+    await page.evaluate(() => {
+      const saveBtn = [...document.querySelectorAll('button span')].find(el => el.textContent.includes("Save"));
+      if (saveBtn) saveBtn.click();
+    });
+    await page.waitForTimeout(3000);
 
-    res.json({ success: true, message: 'تم إنشاء الاشتراك بنجاح', url });
+    await browser.close();
+    res.json({ success: true, message: `تم إنشاء الحساب: ${username}` });
   } catch (err) {
     await browser.close();
     res.json({ success: false, error: err.message });
