@@ -1,7 +1,9 @@
 const express = require('express');
+const cors = require('cors'); // أضفنا cors
 const puppeteer = require('puppeteer');
 
 const app = express();
+app.use(cors()); // تمكين CORS
 app.use(express.json());
 
 app.post('/create-trial', async (req, res) => {
@@ -11,6 +13,7 @@ app.post('/create-trial', async (req, res) => {
     headless: true,
     args: ['--no-sandbox']
   });
+
   const page = await browser.newPage();
 
   try {
@@ -25,7 +28,6 @@ app.post('/create-trial', async (req, res) => {
 
     await page.type('input[name="username"]', username);
     await page.type('input[name="password"]', password);
-
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
