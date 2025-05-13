@@ -1,102 +1,194 @@
+require('dotenv').config();
 const express = require('express');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const cors = require('cors');
-const puppeteer = require('puppeteer');
-
 const app = express();
+
+// إعدادات متقدمة لـ Puppeteer
+puppeteer.use(StealthPlugin());
 app.use(cors());
 app.use(express.json());
 
-// إعدادات Puppeteer لـ Railway
-const puppeteerOptions = {
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--single-process' // مهم لبيئات محدودة الذاكرة
-  ],
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath()
+// تحسين توليد بيانات الاعتماد
+const generateCredentials = () => {
+  const timestamp = Date.now().toString().slice(-4);
+  const random = Math.floor(Math.random() * 9000) + 1000;
+  return {
+    username: trial_${timestamp}${random}.slice(0, 15),
+    password: Pass${random}${timestamp}!
+  };
 };
 
-app.post('/create-trial', async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ 
-      success: false, 
-      error: "يجب تقديم اسم المستخدم وكلمة السر" 
-    });
+// نظام المحاولات المتعددة
+const retryOperation = async (operation, maxRetries = 3, delay = 2000) => {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      return await operation();
+    } catch (error) {
+      retries++;
+      if (retries === maxRetries) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
+};
 
-  const browser = await puppeteer.launch(puppeteerOptions);
+app.post('/api/create-account', async (req, res) => {
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--single-process'
+    ],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath()
+  });
+
   const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(60000); // 60 ثانية
+  await page.setDefaultNavigationTimeout(90000);
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
   try {
-    // 1. تسجيل الدخول إلى لوحة التحكم
-    console.log("جارٍ تسجيل الدخول...");
-    await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
-    await page.type('input[name="username"]', 'hammadi2024'); // استبدل ببياناتك
-    await page.type('input[name="password"]', 'mtwajdan700'); // استبدل ببياناتك
-    await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    // 1. تسجيل الدخول مع إعادة المحاولة
+    await retryOperation(async () => {
+      console.log('محاولة تسجيل الدخول...');
+      await page.goto('https://panelres.novalivetv.com/login', {
+        waitUntil: 'networkidle2',
+        timeout: 45000
+      });
 
-    // 2. الانتقال إلى صفحة إنشاء اشتراك
-    console.log("جارٍ إنشاء الحساب...");
-    await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
+      await page.evaluate(() => {
+        document.querySelector('input[name="username"]').value = '';
+        document.querySelector('input[name="password"]').value = '';
+      });
 
-    // 3. تعبئة بيانات الحساب
-    await page.type('input[formcontrolname="username"]', username);
-    await page.type('input[formcontrolname="password"]', password);
-    await page.type('input[formcontrolname="mobileNumber"]', '+966500000000'); // رقم افتراضي
-    await page.type('textarea[formcontrolname="resellerNotes"]', 'تم الإنشاء تلقائيًا');
+      await page.type('input[name="username"]', process.env.ADMIN_USERNAME, { delay: 30 });
+      await page.type('input[name="password"]', process.env.ADMIN_PASSWORD, { delay: 30 });
+      
+      await Promise.all([
+        page.click('button[type="submit"]'),
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 })
+      ]);
 
-    // 4. الضغط على "Next"
-    const nextBtn = await page.waitForXPath('//button//span[contains(text(), "Next")]');
-    await nextBtn.click();
-
-    // 5. اختيار الباقة (12 ساعة تجريبية)
-    await page.click('mat-select[formcontrolname="package"]');
-    const packageOption = await page.waitForXPath('//mat-option//span[contains(text(), "12 ساعة")]');
-    await packageOption.click();
-
-    // 6. اختيار "All Countries"
-    await page.click('mat-select[formcontrolname="country"]');
-    const countryOption = await page.waitForXPath('//mat-option//span[contains(text(), "All Countries")]');
-    await countryOption.click();
-
-    // 7. اختيار القالب
-    await page.click('mat-select[formcontrolname="bouquetTemplate"]');
-    const templateOption = await page.waitForXPath('//mat-option//span[contains(text(), "تحويل المحتوى كامل")]');
-    await templateOption.click();
-
-    // 8. حفظ البيانات
-    const saveBtn = await page.waitForXPath('//button//span[contains(text(), "Save")]');
-    await saveBtn.click();
-
-    // 9. التحقق من النجاح
-    await page.waitForSelector('.alert-success', { timeout: 5000 });
-    console.log("تم إنشاء الحساب بنجاح!");
-
-    res.json({ 
-      success: true,
-      data: {
-        username: username,
-        password: password,
-        message: "تم إنشاء الحساب التجريبي بنجاح"
+      if (page.url().includes('login')) {
+        throw new Error('فشل في تسجيل الدخول: لم يتم التوجيه');
       }
     });
 
-  } catch (err) {
-    console.error("حدث خطأ:", err);
-    res.status(500).json({ 
-      success: false, 
-      error: err.message || "فشل في إنشاء الحساب" 
+    // 2. إنشاء الحساب
+    const { username, password } = generateCredentials();
+    console.log(إنشاء حساب جديد: ${username});
+
+    await retryOperation(async () => {
+      await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', {
+        waitUntil: 'networkidle2',
+        timeout: 45000
+      });
+
+      // تعبئة البيانات الأساسية
+      await page.evaluate((data) => {
+        document.querySelector('input[formcontrolname="username"]').value = data.username;
+        document.querySelector('input[formcontrolname="password"]').value = data.password;
+        document.querySelector('input[formcontrolname="mobileNumber"]').value = '+966500000000';
+        document.querySelector('textarea[formcontrolname="resellerNotes"]').value = 'تم الإنشاء تلقائيًا';
+      }, { username, password });
+
+      // الضغط على Next
+      const nextBtn = await page.waitForSelector('button:has-text("Next")', { timeout: 10000 });
+      await Promise.all([
+        nextBtn.click(),
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 })
+      ]);
+
+      // اختيار الباقة
+      await page.click('mat-select[formcontrolname="package"]');
+      await page.waitForSelector('mat-option', { visible: true, timeout: 5000 });
+      const trialOption = await page.$x('//span[contains(., "12 ساعة")]/ancestor::mat-option');
+      await trialOption[0].click();
+
+      // اختيار الدولة
+      await page.click('mat-select[formcontrolname="country"]');
+      await page.waitForSelector('mat-option', { visible: true, timeout: 5000 });
+      const countryOption = await page.$x('//span[contains(., "All Countries")]/ancestor::mat-option');
+      await countryOption[0].click();
+
+      // اختيار القالب
+      await page.click('mat-select[formcontrolname="bouquetTemplate"]');
+      await page.waitForSelector('mat-option', { visible: true, timeout: 5000 });
+      const templateOption = await page.$x('//span[contains(., "تحويل المحتوى كامل")]/ancestor::mat-option');
+      await templateOption[0].click();
+
+      // الحفظ النهائي
+      const saveBtn = await page.waitForSelector('button:has-text("Save")', { timeout: 10000 });
+      await Promise.all([
+        saveBtn.click(),
+        page.waitForResponse(response => 
+          response.url().includes('subscriptions') && 
+          response.status() === 200,
+          { timeout: 30000 }
+        )
+      ]);
+
+      // التحقق من النجاح
+      await page.waitForSelector('.alert-success, .subscription-details', { timeout: 15000 });
+    }, 3, 3000);
+
+    // 3. استخراج بيانات الحساب
+    const accountData = await page.evaluate(() => {
+      const extractValue = (labelText) => {
+        const element = [...document.querySelectorAll('.detail-row')].find(el => 
+          el.textContent.includes(labelText)
+        );
+        return element?.querySelector('.value')?.textContent?.trim() || 'غير متوفر';
+      };
+
+      return {
+        m3u: extractValue('M3U') || extractValue('رابط التشغيل'),
+        expiry: extractValue('Expiry') || extractValue('تاريخ الانتهاء'),
+        status: extractValue('Status') || extractValue('الحالة')
+      };
+    });
+
+    // 4. إرسال النتيجة
+    res.json({
+      success: true,
+      account: {
+        username,
+        password,
+        m3u_url: accountData.m3u,
+        expiry_date: accountData.expiry || '12 ساعة',
+        status: accountData.status || 'نشط',
+        created_at: new Date().toLocaleString('ar-SA')
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ حدث خطأ:', error);
+    
+    // التقاط لقطة شاشة
+    const screenshotPath = errors/error-${Date.now()}.png;
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    
+    res.status(500).json({
+      success: false,
+      error: 'حدث خطأ أثناء إنشاء الحساب',
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack,
+        screenshot: screenshotPath
+      } : undefined,
+      suggestion: 'الرجاء المحاولة مرة أخرى بعد دقيقتين'
     });
   } finally {
     await browser.close();
   }
 });
 
+// تشغيل الخادم
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ الخادم يعمل على المنفذ ${PORT}`));
+app.listen(PORT, () => {
+  console.log(🚀 الخادم يعمل على http://localhost:${PORT});
+  console.log('🔧 وضع التشغيل:', process.env.NODE_ENV || 'development');
+});
