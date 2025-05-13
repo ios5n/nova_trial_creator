@@ -1,0 +1,5 @@
+ADMIN_USERNAME=hammadi2024
+ADMIN_PASSWORD=mtwajdan700
+PORT=3000
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+NODE_ENV=production
