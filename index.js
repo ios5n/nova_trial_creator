@@ -18,7 +18,7 @@ app.post('/create-trial', async (req, res) => {
 
   try {
     // 1. افتح صفحة تسجيل الدخول
-    await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
+    await page.goto('https://panelres.novalivetv.com/sign-in', { waitUntil: 'networkidle2' });
     await page.waitForTimeout(3000); // نعطي وقت لتحميل الواجهة
 
     // ✅ استخدم waitForFunction حتى يظهر العنصر فعلاً
