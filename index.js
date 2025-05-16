@@ -3,7 +3,7 @@ const cors = require('cors');
 const puppeteer = require('puppeteer');
 
 const app = express();
-app.use(cors()); // السماح لجميع المواقع
+app.use(cors());
 app.use(express.json());
 
 app.post('/create-trial', async (req, res) => {
@@ -19,15 +19,21 @@ app.post('/create-trial', async (req, res) => {
   try {
     // تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
-    await page.type('input[name="username"]', 'hammadi2024');
-    await page.type('input[name="password"]', 'mtwajdan700');
+
+    // انتظار العناصر حسب formcontrolname
+    await page.waitForSelector('input[formcontrolname="username"]');
+    await page.type('input[formcontrolname="username"]', 'hammadi2024');
+
+    await page.waitForSelector('input[formcontrolname="password"]');
+    await page.type('input[formcontrolname="password"]', 'mtwajdan700');
+
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
     // فتح صفحة الاشتراك
     await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
 
-    // تعبئة البيانات
+    // تعبئة البيانات الأساسية
     await page.type('input[formcontrolname="username"]', username);
     await page.type('input[formcontrolname="password"]', password);
     await page.type('input[formcontrolname="mobileNumber"]', '+966500000000');
