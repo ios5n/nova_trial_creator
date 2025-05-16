@@ -19,15 +19,15 @@ app.post('/create-trial', async (req, res) => {
   try {
     // 1. افتح صفحة تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
+    await page.waitForTimeout(5000); // انتظر قليلاً لتحميل Angular
 
-    // 2. انتظر حقول اسم المستخدم وكلمة المرور (XPath من الجذر)
-    const [usernameInput] = await page.waitForXPath('//input[@id="username"]', { timeout: 30000 });
-    await usernameInput.type('hammadi2024');
+    // 2. أدخل اسم المستخدم وكلمة المرور داخل المتصفح مباشرة
+    await page.evaluate(() => {
+      document.querySelector('#username').value = 'hammadi2024';
+      document.querySelector('#password').value = 'mtwajdan700';
+    });
 
-    const [passwordInput] = await page.waitForXPath('//input[@id="password"]', { timeout: 30000 });
-    await passwordInput.type('mtwajdan700');
-
-    // 3. الضغط على زر Sign in
+    // 3. اضغط على زر "Sign in"
     await page.evaluate(() => {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Sign in'));
       btn?.click();
@@ -35,16 +35,16 @@ app.post('/create-trial', async (req, res) => {
 
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    // 4. افتح صفحة إضافة اشتراك
+    // 4. انتقل إلى صفحة الاشتراك الجديد
     await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
 
-    // 5. أدخل بيانات الحساب الجديد
+    // 5. املأ البيانات الأساسية
     await page.type('input[formcontrolname="username"]', username);
     await page.type('input[formcontrolname="password"]', password);
     await page.type('input[formcontrolname="mobileNumber"]', '+966500000000');
     await page.type('textarea[formcontrolname="resellerNotes"]', 'تم الإنشاء تلقائيًا');
 
-    // 6. اضغط على Next
+    // 6. اضغط على "Next"
     await page.evaluate(() => {
       const nextBtn = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Next'));
       nextBtn?.click();
@@ -78,7 +78,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 10. اضغط على زر Save
+    // 10. اضغط "Save"
     await page.evaluate(() => {
       const saveBtn = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Save'));
       saveBtn?.click();
@@ -87,7 +87,7 @@ app.post('/create-trial', async (req, res) => {
     await page.waitForTimeout(3000);
     await browser.close();
 
-    res.json({ success: true, message: `✅ تم إنشاء الحساب: ${username}` });
+    res.json({ success: true, message: `✅ تم إنشاء الحساب بنجاح: ${username}` });
   } catch (err) {
     await browser.close();
     res.json({ success: false, error: err.message });
@@ -95,4 +95,4 @@ app.post('/create-trial', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server is running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Running on port ${PORT}`));
