@@ -19,13 +19,14 @@ app.post('/create-trial', async (req, res) => {
   try {
     // 1. افتح صفحة تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
-    await page.waitForTimeout(5000); // انتظار لتحمّل العناصر
+    await page.waitForTimeout(3000); // نعطي وقت لتحميل الواجهة
 
-    // ✅ انتظر ظهور عناصر الإدخال ثم اكتب فيها
-    await page.waitForSelector('#username', { timeout: 10000 });
+    // ✅ استخدم waitForFunction حتى يظهر العنصر فعلاً
+    await page.waitForFunction(() => {
+      return document.querySelector('#username') && document.querySelector('#password');
+    }, { timeout: 20000 });
+
     await page.type('#username', 'hammadi2024');
-
-    await page.waitForSelector('#password', { timeout: 10000 });
     await page.type('#password', 'mtwajdan700');
 
     // 2. اضغط على زر Sign in
@@ -79,7 +80,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 9. اضغط على Save
+    // 9. اضغط Save
     await page.evaluate(() => {
       const saveBtn = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Save'));
       saveBtn?.click();
