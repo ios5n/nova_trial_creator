@@ -19,15 +19,16 @@ app.post('/create-trial', async (req, res) => {
   try {
     // 1. افتح صفحة تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
-    await page.waitForTimeout(5000); // انتظر قليلاً لتحميل Angular
+    await page.waitForTimeout(5000); // انتظار لتحمّل العناصر
 
-    // 2. أدخل اسم المستخدم وكلمة المرور داخل المتصفح مباشرة
-    await page.evaluate(() => {
-      document.querySelector('#username').value = 'hammadi2024';
-      document.querySelector('#password').value = 'mtwajdan700';
-    });
+    // ✅ انتظر ظهور عناصر الإدخال ثم اكتب فيها
+    await page.waitForSelector('#username', { timeout: 10000 });
+    await page.type('#username', 'hammadi2024');
 
-    // 3. اضغط على زر "Sign in"
+    await page.waitForSelector('#password', { timeout: 10000 });
+    await page.type('#password', 'mtwajdan700');
+
+    // 2. اضغط على زر Sign in
     await page.evaluate(() => {
       const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Sign in'));
       btn?.click();
@@ -35,23 +36,23 @@ app.post('/create-trial', async (req, res) => {
 
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    // 4. انتقل إلى صفحة الاشتراك الجديد
+    // 3. افتح صفحة إنشاء اشتراك
     await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
 
-    // 5. املأ البيانات الأساسية
+    // 4. أدخل بيانات الحساب التجريبي
     await page.type('input[formcontrolname="username"]', username);
     await page.type('input[formcontrolname="password"]', password);
     await page.type('input[formcontrolname="mobileNumber"]', '+966500000000');
     await page.type('textarea[formcontrolname="resellerNotes"]', 'تم الإنشاء تلقائيًا');
 
-    // 6. اضغط على "Next"
+    // 5. اضغط Next
     await page.evaluate(() => {
       const nextBtn = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Next'));
       nextBtn?.click();
     });
     await page.waitForTimeout(2000);
 
-    // 7. اختر الباقة
+    // 6. اختر الباقة
     await page.click('mat-select[formcontrolname="package"]');
     await page.waitForSelector('mat-option');
     await page.evaluate(() => {
@@ -60,7 +61,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 8. اختر الدولة
+    // 7. اختر الدولة
     await page.click('mat-select[formcontrolname="country"]');
     await page.waitForSelector('mat-option');
     await page.evaluate(() => {
@@ -69,7 +70,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 9. اختر قالب الباقات
+    // 8. اختر قالب الباقات
     await page.click('mat-select[formcontrolname="bouquetTemplate"]');
     await page.waitForSelector('mat-option');
     await page.evaluate(() => {
@@ -78,7 +79,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 10. اضغط "Save"
+    // 9. اضغط على Save
     await page.evaluate(() => {
       const saveBtn = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Save'));
       saveBtn?.click();
@@ -87,7 +88,7 @@ app.post('/create-trial', async (req, res) => {
     await page.waitForTimeout(3000);
     await browser.close();
 
-    res.json({ success: true, message: `✅ تم إنشاء الحساب بنجاح: ${username}` });
+    res.json({ success: true, message: `✅ تم إنشاء الحساب: ${username}` });
   } catch (err) {
     await browser.close();
     res.json({ success: false, error: err.message });
@@ -95,4 +96,4 @@ app.post('/create-trial', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server is running on port ${PORT}`));
