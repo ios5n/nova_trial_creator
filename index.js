@@ -20,27 +20,27 @@ app.post('/create-trial', async (req, res) => {
     // 1. فتح صفحة تسجيل الدخول
     await page.goto('https://panelres.novalivetv.com/login', { waitUntil: 'networkidle2' });
 
-    // 2. إدخال بيانات تسجيل الدخول باستخدام ID
-    await page.waitForSelector('#username');
-    await page.type('#username', 'hammadi2024');
+    // ✅ ننتظر شوي بدل ما نبحث عن selector مباشرة
+    await page.waitForTimeout(5000); // 5 ثواني
 
-    await page.waitForSelector('#password');
+    // 2. تعبئة بيانات الدخول مباشرة
+    await page.type('#username', 'hammadi2024');
     await page.type('#password', 'mtwajdan700');
 
-    // 3. الضغط على زر الدخول
+    // 3. الضغط على زر تسجيل الدخول
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
 
-    // 4. فتح صفحة إضافة اشتراك جديد
+    // 4. الانتقال إلى صفحة إنشاء الاشتراك
     await page.goto('https://panelres.novalivetv.com/subscriptions/add-subscription', { waitUntil: 'networkidle2' });
 
-    // 5. تعبئة البيانات الأساسية
+    // 5. تعبئة بيانات الاشتراك
     await page.type('input[formcontrolname="username"]', username);
     await page.type('input[formcontrolname="password"]', password);
     await page.type('input[formcontrolname="mobileNumber"]', '+966500000000');
     await page.type('textarea[formcontrolname="resellerNotes"]', 'تم الإنشاء تلقائيًا');
 
-    // 6. الضغط على "Next"
+    // 6. الضغط على Next
     await page.evaluate(() => {
       const nextBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('Next'));
       nextBtn?.click();
@@ -74,7 +74,7 @@ app.post('/create-trial', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // 10. الضغط على زر Save
+    // 10. الضغط على Save
     await page.evaluate(() => {
       const saveBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('Save'));
       saveBtn?.click();
